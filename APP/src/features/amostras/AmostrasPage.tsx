@@ -18,6 +18,7 @@ import { EyeOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs, { type Dayjs } from 'dayjs'
 import { PaginaListagem } from '@/shared/components/PaginaListagem'
+import { useDescricaoCarteira } from '@/shared/hooks/useColunaAgronomo'
 import { TagStatusAmostra } from '@/shared/components/TagStatus'
 import { api, mensagemDeErro } from '@/shared/api/client'
 import {
@@ -35,6 +36,7 @@ export function AmostrasPage() {
   const queryClient = useQueryClient()
   const { message } = App.useApp()
   const [form] = Form.useForm()
+  const descricaoCarteira = useDescricaoCarteira()
   const [modalAberto, setModalAberto] = useState(false)
 
   const listagem = useQuery({ queryKey: ['amostras'], queryFn: amostrasApi.listar })
@@ -102,7 +104,7 @@ export function AmostrasPage() {
     <>
       <PaginaListagem<AmostraResumo>
         titulo="Amostras foliares"
-        descricao="Lançamento de laudos laboratoriais e acompanhamento dos diagnósticos."
+        descricao={descricaoCarteira("Lançamento de laudos laboratoriais e acompanhamento dos diagnósticos.", "Diagnósticos de todas as carteiras da plataforma.")}
         textoBotaoNovo="Nova Amostra"
         aoClicarNovo={() => setModalAberto(true)}
         loading={listagem.isLoading}

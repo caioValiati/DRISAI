@@ -15,7 +15,7 @@ interface FormularioNorma {
 
 /** RF004 — Manter Normas DRIS (exclusivo do Administrador). */
 export function NormasPage() {
-  const { listagem, criar, atualizar, inativar } = useCrud<NormaDris, FormularioNorma>(
+  const { listagem, criar, atualizar, inativar, reativar } = useCrud<NormaDris, FormularioNorma>(
     'normas',
     'Norma',
   )
@@ -76,10 +76,10 @@ export function NormasPage() {
             width: 110,
             render: (_, norma) => (
               <AcoesLinha
-                rotulo="norma"
                 ativo={norma.ativa}
                 aoEditar={() => abrirModal(norma)}
                 aoInativar={() => inativar.mutate(norma.id)}
+                aoReativar={() => reativar.mutate({ id: norma.id })}
               />
             ),
           },

@@ -13,9 +13,13 @@ recomendação de insumos. Projeto de TCC — Engenharia de Software, UniRV.
 
 ## Fase 1 (atual)
 
-- Autenticação JWT (access token + refresh em cookie httpOnly) e RBAC (RF002/RF003)
+- Autenticação JWT (access token + refresh em cookie httpOnly) e RBAC (RF002/RF003):
+  o Agrônomo mantém a própria carteira e o Administrador acumula a curadoria de
+  normas/insumos com a supervisão de todas as carteiras
 - CRUDs: Usuários, Normas DRIS, Insumos, Produtores, Propriedades, Talhões e Amostras
-  (RF001, RF004–RF009), com soft delete e escopo por agrônomo
+  (RF001, RF004–RF009), com inativação em cascata pela hierarquia
+  Produtor → Propriedade → Talhão, reativação (opcionalmente em cascata) e prévia
+  de impacto antes de cada ação
 - Motor de cálculo DRIS/IBN pelas fórmulas de Beaufils (RF010) em `API/app/domain/dris.py`
 - Painel de revisão com gráfico radial, edição da recomendação e conclusão imutável
   (RF012 parcial, RN005/RN006)

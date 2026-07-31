@@ -23,6 +23,19 @@ export interface RelacaoDual {
   media: number
   dp: number
   cv: number
+  variancia?: number | null
+  n_observacoes?: number | null
+}
+
+export interface ImpactoVinculo {
+  entidade: string
+  ativos: number
+  inativos: number
+}
+
+export interface ImpactoVinculos {
+  vinculos: ImpactoVinculo[]
+  amostras_vinculadas: number
 }
 
 export interface NormaDris {
@@ -49,6 +62,7 @@ export interface Produtor {
   telefone: string | null
   email: string | null
   ativo: boolean
+  agronomo_nome: string | null
 }
 
 export interface Propriedade {
@@ -59,6 +73,7 @@ export interface Propriedade {
   area_total_ha: string
   ativo: boolean
   produtor_nome: string | null
+  agronomo_nome: string | null
 }
 
 export interface Talhao {
@@ -69,6 +84,7 @@ export interface Talhao {
   historico_culturas: string | null
   ativo: boolean
   propriedade_nome: string | null
+  agronomo_nome: string | null
 }
 
 export interface IndiceNutricional {

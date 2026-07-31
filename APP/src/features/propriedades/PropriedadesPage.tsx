@@ -3,8 +3,11 @@ import { Form, Input, InputNumber, Modal, Select } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import { PaginaListagem } from '@/shared/components/PaginaListagem'
 import { AcoesLinha } from '@/shared/components/AcoesLinha'
+import { ModalVinculos } from '@/shared/components/ModalVinculos'
 import { TagAtivo } from '@/shared/components/TagStatus'
 import { useCrud } from '@/shared/hooks/useCrud'
+import { useAcoesRegistro } from '@/shared/hooks/useAcoesRegistro'
+import { useColunaAgronomo, useDescricaoCarteira } from '@/shared/hooks/useColunaAgronomo'
 import { api } from '@/shared/api/client'
 import type { Produtor, Propriedade } from '@/shared/types'
 
@@ -17,10 +20,11 @@ interface FormularioPropriedade {
 
 /** RF007 — Manter Propriedades, sempre vinculadas a um produtor (RN002). */
 export function PropriedadesPage() {
-  const { listagem, criar, atualizar, inativar } = useCrud<Propriedade, FormularioPropriedade>(
-    'propriedades',
-    'Propriedade',
-  )
+  const crud = useCrud<Propriedade, FormularioPropriedade>('propriedades', 'Propriedade')
+  const { listagem, criar, atualizar } = crud
+  const acoes = useAcoesRegistro<Propriedade>(crud, 'propriedade', (p) => p.nome_fazenda)
+  const colunaAgronomo = useColunaAgronomo<Propriedade>()
+  const descricaoCarteira = useDescricaoCarteira()
   const [form] = Form.useForm<FormularioPropriedade>()
   const [emEdicao, setEmEdicao] = useState<Propriedade | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
@@ -63,7 +67,7 @@ export function PropriedadesPage() {
     <>
       <PaginaListagem<Propriedade>
         titulo="Propriedades"
-        descricao="Fazendas vinculadas aos produtores da sua carteira."
+        descricao={descricaoCarteira("Fazendas vinculadas aos produtores da sua carteira.", "Fazendas de todas as carteiras da plataforma.")}
         textoBotaoNovo="Nova Propriedade"
         aoClicarNovo={() => {
           setEmEdicao(null)
@@ -83,24 +87,27 @@ export function PropriedadesPage() {
               minimumFractionDigits: 2,
             }),
           },
+          ...colunaAgronomo,
           { title: 'Situação', render: (_, item) => <TagAtivo ativo={item.ativo} /> },
           {
             title: 'Ações',
             width: 110,
             render: (_, item) => (
               <AcoesLinha
-                rotulo="propriedade"
                 ativo={item.ativo}
                 aoEditar={() => {
                   setEmEdicao(item)
                   setModalAberto(true)
                 }}
-                aoInativar={() => inativar.mutate(item.id)}
+                aoInativar={() => acoes.pedirInativacao(item)}
+                aoReativar={() => acoes.pedirReativacao(item)}
               />
             ),
           },
         ]}
       />
+
+      <ModalVinculos {...acoes.propsModal} />
 
       <Modal
         open={modalAberto}

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Button, Empty, InputNumber, Select, Space, Table, Typography } from 'antd'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { Button, Empty, InputNumber, Popconfirm, Select, Space, Table, Typography } from 'antd'
+import { DeleteOutlined, PlusOutlined, TableOutlined } from '@ant-design/icons'
 import { NUTRIENTES, type RelacaoDual } from '@/shared/types'
 
 type Matriz = Record<string, RelacaoDual>
@@ -10,13 +10,28 @@ interface MatrizRelacoesDuaisProps {
   onChange?: (valor: Matriz) => void
 }
 
+const RELACAO_PADRAO: RelacaoDual = { media: 1, dp: 0.1, cv: 10 }
+
+/** Combinações A/B sem repetição, na ordem canônica dos nutrientes. */
+function todasAsRelacoes(): string[] {
+  const pares: string[] = []
+  for (let i = 0; i < NUTRIENTES.length; i++) {
+    for (let j = i + 1; j < NUTRIENTES.length; j++) {
+      pares.push(`${NUTRIENTES[i]}/${NUTRIENTES[j]}`)
+    }
+  }
+  return pares
+}
+
 /**
  * Editor das relações duais da Norma DRIS (Quadro 25 do DERS).
  *
- * Uma matriz completa com 11 nutrientes teria 55 pares; na prática a norma
- * publicada traz apenas um subconjunto. Por isso o agrônomo adiciona as
- * relações que existem na norma, informando média, desvio-padrão e CV.
- * O CV é derivado automaticamente de média e desvio-padrão.
+ * As normas publicadas variam no conjunto de relações que trazem, então o
+ * usuário pode montar a matriz par a par ou gerar de uma vez as 55 combinações
+ * dos 11 nutrientes e editar os valores.
+ *
+ * CV e variância são derivados de média e desvio-padrão a cada edição, mas
+ * continuam editáveis para quando a norma publicar valores próprios.
  */
 export function MatrizRelacoesDuais({ value = {}, onChange }: MatrizRelacoesDuaisProps) {
   const [numerador, setNumerador] = useState<string>()
@@ -31,17 +46,26 @@ export function MatrizRelacoesDuais({ value = {}, onChange }: MatrizRelacoesDuai
     if (!numerador || !denominador || numerador === denominador) return
     const chave = `${numerador}/${denominador}`
     if (value[chave]) return
-    onChange?.({ ...value, [chave]: { media: 1, dp: 0.1, cv: 10 } })
+    onChange?.({ ...value, [chave]: { ...RELACAO_PADRAO } })
     setNumerador(undefined)
     setDenominador(undefined)
   }
 
+  function inserirTodas() {
+    const completa: Matriz = {}
+    for (const relacao of todasAsRelacoes()) {
+      completa[relacao] = value[relacao] ?? { ...RELACAO_PADRAO }
+    }
+    onChange?.(completa)
+  }
+
   function alterarCampo(relacao: string, campo: keyof RelacaoDual, novoValor: number | null) {
-    if (novoValor === null) return
-    const atual = { ...value[relacao], [campo]: novoValor }
-    // CV = 100 * dp / média — mantido consistente sempre que média ou dp mudam
+    const atual: RelacaoDual = { ...value[relacao], [campo]: novoValor ?? undefined }
     if (campo === 'media' || campo === 'dp') {
-      atual.cv = atual.media > 0 ? Number(((100 * atual.dp) / atual.media).toFixed(2)) : 0
+      const media = atual.media ?? 0
+      const dp = atual.dp ?? 0
+      atual.cv = media > 0 ? Number(((100 * dp) / media).toFixed(2)) : 0
+      atual.variancia = Number((dp * dp).toFixed(4))
     }
     onChange?.({ ...value, [relacao]: atual })
   }
@@ -53,6 +77,27 @@ export function MatrizRelacoesDuais({ value = {}, onChange }: MatrizRelacoesDuai
   }
 
   const opcoes = NUTRIENTES.map((n) => ({ value: n, label: n }))
+
+  function colunaNumerica(
+    titulo: string,
+    campo: keyof RelacaoDual,
+    props: { min?: number; step?: number; precision?: number } = {},
+  ) {
+    return {
+      title: titulo,
+      width: 120,
+      render: (_: unknown, linha: RelacaoDual & { relacao: string }) => (
+        <InputNumber
+          min={props.min ?? 0}
+          step={props.step ?? 0.01}
+          precision={props.precision}
+          value={linha[campo] as number | undefined}
+          style={{ width: '100%' }}
+          onChange={(v) => alterarCampo(linha.relacao, campo, v)}
+        />
+      ),
+    }
+  }
 
   return (
     <div>
@@ -79,6 +124,20 @@ export function MatrizRelacoesDuais({ value = {}, onChange }: MatrizRelacoesDuai
         >
           Adicionar relação
         </Button>
+        <Button icon={<TableOutlined />} onClick={inserirTodas}>
+          Inserir todas as relações ({todasAsRelacoes().length})
+        </Button>
+        {linhas.length > 0 && (
+          <Popconfirm
+            title="Remover todas as relações?"
+            okText="Remover"
+            cancelText="Cancelar"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => onChange?.({})}
+          >
+            <Button danger>Limpar</Button>
+          </Popconfirm>
+        )}
       </Space>
 
       {linhas.length === 0 ? (
@@ -88,57 +147,25 @@ export function MatrizRelacoesDuais({ value = {}, onChange }: MatrizRelacoesDuai
           size="small"
           rowKey="relacao"
           pagination={false}
-          scroll={{ y: 320 }}
+          scroll={{ y: 320, x: 'max-content' }}
           dataSource={linhas}
           columns={[
             {
               title: 'Relação',
               dataIndex: 'relacao',
-              width: 100,
+              width: 90,
+              fixed: 'left',
               render: (relacao: string) => <Typography.Text strong>{relacao}</Typography.Text>,
             },
-            {
-              title: 'Média',
-              width: 130,
-              render: (_, linha) => (
-                <InputNumber
-                  min={0.0001}
-                  step={0.01}
-                  value={linha.media}
-                  style={{ width: '100%' }}
-                  onChange={(v) => alterarCampo(linha.relacao, 'media', v)}
-                />
-              ),
-            },
-            {
-              title: 'Desvio-padrão',
-              width: 130,
-              render: (_, linha) => (
-                <InputNumber
-                  min={0.0001}
-                  step={0.01}
-                  value={linha.dp}
-                  style={{ width: '100%' }}
-                  onChange={(v) => alterarCampo(linha.relacao, 'dp', v)}
-                />
-              ),
-            },
-            {
-              title: 'CV (%)',
-              width: 130,
-              render: (_, linha) => (
-                <InputNumber
-                  min={0.0001}
-                  step={0.01}
-                  value={linha.cv}
-                  style={{ width: '100%' }}
-                  onChange={(v) => alterarCampo(linha.relacao, 'cv', v)}
-                />
-              ),
-            },
+            colunaNumerica('Média', 'media', { min: 0.0001 }),
+            colunaNumerica('Desvio-padrão', 'dp', { min: 0.0001 }),
+            colunaNumerica('CV (%)', 'cv', { min: 0.0001 }),
+            colunaNumerica('Variância', 'variancia'),
+            colunaNumerica('Nº observações', 'n_observacoes', { step: 1, precision: 0 }),
             {
               title: '',
               width: 50,
+              fixed: 'right',
               render: (_, linha) => (
                 <Button
                   size="small"

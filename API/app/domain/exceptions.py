@@ -24,7 +24,7 @@ class AmostraImutavelError(DominioError):
     status_code = 409
 
     def __init__(self):
-        super().__init__("Amostra concluída é imutável e não pode ser alterada (RN006).")
+        super().__init__("Amostra concluída é imutável e não pode ser alterada.")
 
 
 class AcessoNegadoError(DominioError):

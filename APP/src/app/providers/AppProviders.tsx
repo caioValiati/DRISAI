@@ -8,9 +8,17 @@ import { AuthProvider } from './AuthContext'
 
 dayjs.locale('pt-br')
 
+// Dados de cadastro mudam pouco durante uma sessão e toda mutação invalida as
+// chaves afetadas (ver useCrud), então vale manter a janela de frescor longa:
+// navegar entre os menus reaproveita o cache em vez de refazer as requisições.
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 30_000 },
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60_000,
+      gcTime: 30 * 60_000,
+    },
   },
 })
 

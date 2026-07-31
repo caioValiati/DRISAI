@@ -21,4 +21,5 @@ class Produtor(Base, BaseModelMixin):
     email: Mapped[str | None] = mapped_column(String(255))
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+    agronomo: Mapped["Usuario"] = relationship()  # noqa: F821
     propriedades: Mapped[list["Propriedade"]] = relationship(back_populates="produtor")  # noqa: F821

@@ -11,7 +11,7 @@ from app.api.v1.schemas.amostras import (
     AtualizarRecomendacaoRequest,
 )
 from app.application.services.amostra_service import AmostraService
-from app.core.deps import CurrentAgronomo, DbSession
+from app.core.deps import CurrentUser, DbSession
 
 router = APIRouter(prefix="/amostras", tags=["Amostras Foliares"])
 
@@ -26,31 +26,31 @@ def _preencher_contexto(resposta, amostra):
 
 
 @router.get("", response_model=list[AmostraResumoResponse])
-def listar_amostras(db: DbSession, agronomo: CurrentAgronomo):
+def listar_amostras(db: DbSession, usuario: CurrentUser):
     return [
         _preencher_contexto(AmostraResumoResponse.model_validate(a), a)
-        for a in AmostraService(db).listar(agronomo.id)
+        for a in AmostraService(db).listar(usuario)
     ]
 
 
 @router.get("/{amostra_id}", response_model=AmostraDetalheResponse)
-def obter_amostra(amostra_id: uuid.UUID, db: DbSession, agronomo: CurrentAgronomo):
-    amostra = AmostraService(db).obter(amostra_id, agronomo.id)
+def obter_amostra(amostra_id: uuid.UUID, db: DbSession, usuario: CurrentUser):
+    amostra = AmostraService(db).obter(amostra_id, usuario)
     return _preencher_contexto(AmostraDetalheResponse.model_validate(amostra), amostra)
 
 
 @router.post("", response_model=AmostraDetalheResponse, status_code=status.HTTP_201_CREATED)
-def criar_amostra(dados: AmostraRequest, db: DbSession, agronomo: CurrentAgronomo):
+def criar_amostra(dados: AmostraRequest, db: DbSession, usuario: CurrentUser):
     """Botão "Processar Análise DRIS" (Quadro 41): persiste e calcula (RF010)."""
-    amostra = AmostraService(db).criar_e_processar(agronomo.id, dados)
+    amostra = AmostraService(db).criar_e_processar(usuario, dados)
     return _preencher_contexto(AmostraDetalheResponse.model_validate(amostra), amostra)
 
 
 @router.put("/{amostra_id}", response_model=AmostraDetalheResponse)
 def atualizar_amostra(
-    amostra_id: uuid.UUID, dados: AmostraRequest, db: DbSession, agronomo: CurrentAgronomo
+    amostra_id: uuid.UUID, dados: AmostraRequest, db: DbSession, usuario: CurrentUser
 ):
-    amostra = AmostraService(db).atualizar_e_reprocessar(amostra_id, agronomo.id, dados)
+    amostra = AmostraService(db).atualizar_e_reprocessar(amostra_id, usuario, dados)
     return _preencher_contexto(AmostraDetalheResponse.model_validate(amostra), amostra)
 
 
@@ -59,13 +59,13 @@ def atualizar_recomendacao(
     amostra_id: uuid.UUID,
     dados: AtualizarRecomendacaoRequest,
     db: DbSession,
-    agronomo: CurrentAgronomo,
+    usuario: CurrentUser,
 ):
-    amostra = AmostraService(db).atualizar_recomendacao(amostra_id, agronomo.id, dados)
+    amostra = AmostraService(db).atualizar_recomendacao(amostra_id, usuario, dados)
     return _preencher_contexto(AmostraDetalheResponse.model_validate(amostra), amostra)
 
 
 @router.post("/{amostra_id}/concluir", response_model=AmostraDetalheResponse)
-def concluir_amostra(amostra_id: uuid.UUID, db: DbSession, agronomo: CurrentAgronomo):
-    amostra = AmostraService(db).concluir(amostra_id, agronomo.id)
+def concluir_amostra(amostra_id: uuid.UUID, db: DbSession, usuario: CurrentUser):
+    amostra = AmostraService(db).concluir(amostra_id, usuario)
     return _preencher_contexto(AmostraDetalheResponse.model_validate(amostra), amostra)

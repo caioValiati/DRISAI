@@ -10,9 +10,18 @@ from app.domain.enums import NUTRIENTES
 
 
 class RelacaoDualParams(BaseModel):
+    """Parâmetros de uma relação dual na população de referência.
+
+    `media`, `dp` e `cv` alimentam o cálculo DRIS. `variancia` e `n_observacoes`
+    são registrados para rastreabilidade estatística da norma e uso futuro
+    (ex.: testes de significância na Fase 2).
+    """
+
     media: float = Field(gt=0)
     dp: float = Field(gt=0)
     cv: float = Field(gt=0)
+    variancia: float | None = Field(default=None, ge=0)
+    n_observacoes: int | None = Field(default=None, ge=0)
 
 
 class NormaDrisRequest(BaseModel):
@@ -99,6 +108,7 @@ class ProdutorResponse(BaseModel):
     telefone: str | None
     email: str | None
     ativo: bool
+    agronomo_nome: str | None = None
 
 
 class PropriedadeRequest(BaseModel):
@@ -118,6 +128,7 @@ class PropriedadeResponse(BaseModel):
     area_total_ha: Decimal
     ativo: bool
     produtor_nome: str | None = None
+    agronomo_nome: str | None = None
 
 
 class TalhaoRequest(BaseModel):
@@ -137,3 +148,17 @@ class TalhaoResponse(BaseModel):
     historico_culturas: str | None
     ativo: bool
     propriedade_nome: str | None = None
+    agronomo_nome: str | None = None
+
+
+class ImpactoVinculo(BaseModel):
+    entidade: str
+    ativos: int
+    inativos: int
+
+
+class ImpactoVinculosResponse(BaseModel):
+    """Prévia usada pelo frontend para avisar o usuário antes de inativar/reativar."""
+
+    vinculos: list[ImpactoVinculo]
+    amostras_vinculadas: int

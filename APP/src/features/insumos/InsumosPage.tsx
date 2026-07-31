@@ -17,7 +17,7 @@ interface FormularioInsumo {
 
 /** RF005 — Manter Insumos (exclusivo do Administrador). */
 export function InsumosPage() {
-  const { listagem, criar, atualizar, inativar } = useCrud<Insumo, FormularioInsumo>(
+  const { listagem, criar, atualizar, inativar, reativar } = useCrud<Insumo, FormularioInsumo>(
     'insumos',
     'Insumo',
   )
@@ -103,13 +103,13 @@ export function InsumosPage() {
             width: 110,
             render: (_, insumo) => (
               <AcoesLinha
-                rotulo="insumo"
                 ativo={insumo.ativo}
                 aoEditar={() => {
                   setEmEdicao(insumo)
                   setModalAberto(true)
                 }}
                 aoInativar={() => inativar.mutate(insumo.id)}
+                aoReativar={() => reativar.mutate({ id: insumo.id })}
               />
             ),
           },

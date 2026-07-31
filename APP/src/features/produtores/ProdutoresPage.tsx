@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { Form, Input, Modal } from 'antd'
 import { PaginaListagem } from '@/shared/components/PaginaListagem'
 import { AcoesLinha } from '@/shared/components/AcoesLinha'
+import { ModalVinculos } from '@/shared/components/ModalVinculos'
 import { TagAtivo } from '@/shared/components/TagStatus'
 import { useCrud } from '@/shared/hooks/useCrud'
+import { useAcoesRegistro } from '@/shared/hooks/useAcoesRegistro'
+import { useColunaAgronomo, useDescricaoCarteira } from '@/shared/hooks/useColunaAgronomo'
 import type { Produtor } from '@/shared/types'
 
 interface FormularioProdutor {
@@ -27,10 +30,11 @@ function formatarDocumento(documento: string) {
 
 /** RF006 — Manter Produtores (carteira do agrônomo). */
 export function ProdutoresPage() {
-  const { listagem, criar, atualizar, inativar } = useCrud<Produtor, FormularioProdutor>(
-    'produtores',
-    'Produtor',
-  )
+  const crud = useCrud<Produtor, FormularioProdutor>('produtores', 'Produtor')
+  const { listagem, criar, atualizar } = crud
+  const acoes = useAcoesRegistro<Produtor>(crud, 'produtor', (p) => p.nome_razao)
+  const colunaAgronomo = useColunaAgronomo<Produtor>()
+  const descricaoCarteira = useDescricaoCarteira()
   const [form] = Form.useForm<FormularioProdutor>()
   const [emEdicao, setEmEdicao] = useState<Produtor | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
@@ -64,7 +68,7 @@ export function ProdutoresPage() {
     <>
       <PaginaListagem<Produtor>
         titulo="Produtores"
-        descricao="Carteira de produtores rurais atendidos por você."
+        descricao={descricaoCarteira("Produtores rurais atendidos por você.", "Produtores rurais de todos os agrônomos da plataforma.")}
         textoBotaoNovo="Novo Produtor"
         aoClicarNovo={() => {
           setEmEdicao(null)
@@ -81,24 +85,27 @@ export function ProdutoresPage() {
           },
           { title: 'Telefone', dataIndex: 'telefone', render: (v: string | null) => v || '—' },
           { title: 'E-mail', dataIndex: 'email', render: (v: string | null) => v || '—' },
+          ...colunaAgronomo,
           { title: 'Situação', render: (_, produtor) => <TagAtivo ativo={produtor.ativo} /> },
           {
             title: 'Ações',
             width: 110,
             render: (_, produtor) => (
               <AcoesLinha
-                rotulo="produtor"
                 ativo={produtor.ativo}
                 aoEditar={() => {
                   setEmEdicao(produtor)
                   setModalAberto(true)
                 }}
-                aoInativar={() => inativar.mutate(produtor.id)}
+                aoInativar={() => acoes.pedirInativacao(produtor)}
+                aoReativar={() => acoes.pedirReativacao(produtor)}
               />
             ),
           },
         ]}
       />
+
+      <ModalVinculos {...acoes.propsModal} />
 
       <Modal
         open={modalAberto}

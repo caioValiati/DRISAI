@@ -19,7 +19,13 @@ from app.domain.exceptions import (
     DominioError,
     RecursoNaoEncontradoError,
 )
-from app.infrastructure.db.models import AmostraFoliar, IndiceNutricional, Recomendacao
+from app.application.escopo import escopo_de
+from app.infrastructure.db.models import (
+    AmostraFoliar,
+    IndiceNutricional,
+    Recomendacao,
+    Usuario,
+)
 from app.infrastructure.repositories.amostra_repository import AmostraRepository
 from app.infrastructure.repositories.cadastros_repository import (
     NormaDrisRepository,
@@ -34,19 +40,19 @@ class AmostraService:
         self.talhao_repo = TalhaoRepository(db)
         self.norma_repo = NormaDrisRepository(db)
 
-    def listar(self, agronomo_id: uuid.UUID) -> list[AmostraFoliar]:
-        return self.repo.listar_do_agronomo(agronomo_id)
+    def listar(self, usuario: Usuario) -> list[AmostraFoliar]:
+        return self.repo.listar(escopo_de(usuario))
 
-    def obter(self, amostra_id: uuid.UUID, agronomo_id: uuid.UUID) -> AmostraFoliar:
-        amostra = self.repo.obter_do_agronomo(amostra_id, agronomo_id)
+    def obter(self, amostra_id: uuid.UUID, usuario: Usuario) -> AmostraFoliar:
+        amostra = self.repo.obter(amostra_id, escopo_de(usuario))
         if not amostra:
             raise RecursoNaoEncontradoError("Amostra não encontrada.")
         return amostra
 
-    def _validar_vinculos(self, dados: AmostraRequest, agronomo_id: uuid.UUID):
+    def _validar_vinculos(self, dados: AmostraRequest, usuario: Usuario):
         # RN002 — amostra exige talhão da carteira e norma ativa
-        if not self.talhao_repo.obter_do_agronomo(dados.talhao_id, agronomo_id):
-            raise RecursoNaoEncontradoError("Talhão não encontrado na sua carteira.")
+        if not self.talhao_repo.obter(dados.talhao_id, escopo_de(usuario)):
+            raise RecursoNaoEncontradoError("Talhão não encontrado.")
         norma = self.norma_repo.obter_por_id(dados.norma_dris_id)
         if not norma:
             raise RecursoNaoEncontradoError("Norma DRIS não encontrada.")
@@ -73,8 +79,8 @@ class AmostraService:
         amostra.valor_ibn = Decimal(str(resultado.ibn))
         amostra.status = StatusAmostra.AGUARDANDO_REVISAO
 
-    def criar_e_processar(self, agronomo_id: uuid.UUID, dados: AmostraRequest) -> AmostraFoliar:
-        norma = self._validar_vinculos(dados, agronomo_id)
+    def criar_e_processar(self, usuario: Usuario, dados: AmostraRequest) -> AmostraFoliar:
+        norma = self._validar_vinculos(dados, usuario)
         amostra = AmostraFoliar(
             talhao_id=dados.talhao_id,
             norma_dris_id=dados.norma_dris_id,
@@ -83,29 +89,29 @@ class AmostraService:
         self._processar_indices(amostra, dados, norma)
         amostra.recomendacao = Recomendacao()  # rascunho de IA entra na Fase 2
         self.repo.adicionar(amostra)
-        return self.obter(amostra.id, agronomo_id)
+        return self.obter(amostra.id, usuario)
 
     def atualizar_e_reprocessar(
-        self, amostra_id: uuid.UUID, agronomo_id: uuid.UUID, dados: AmostraRequest
+        self, amostra_id: uuid.UUID, usuario: Usuario, dados: AmostraRequest
     ) -> AmostraFoliar:
-        amostra = self.obter(amostra_id, agronomo_id)
+        amostra = self.obter(amostra_id, usuario)
         if amostra.status == StatusAmostra.CONCLUIDA:
             raise AmostraImutavelError()  # RN006
-        norma = self._validar_vinculos(dados, agronomo_id)
+        norma = self._validar_vinculos(dados, usuario)
         amostra.talhao_id = dados.talhao_id
         amostra.norma_dris_id = dados.norma_dris_id
         amostra.data_coleta = dados.data_coleta
         self._processar_indices(amostra, dados, norma)
-        return self.obter(amostra_id, agronomo_id)
+        return self.obter(amostra_id, usuario)
 
     def atualizar_recomendacao(
         self,
         amostra_id: uuid.UUID,
-        agronomo_id: uuid.UUID,
+        usuario: Usuario,
         dados: AtualizarRecomendacaoRequest,
     ) -> AmostraFoliar:
         """RF012 — o agrônomo edita o texto da recomendação durante a revisão."""
-        amostra = self.obter(amostra_id, agronomo_id)
+        amostra = self.obter(amostra_id, usuario)
         if amostra.status == StatusAmostra.CONCLUIDA:
             raise AmostraImutavelError()
         if amostra.recomendacao is None:
@@ -113,12 +119,12 @@ class AmostraService:
         amostra.recomendacao.texto_final_editado = dados.texto_final_editado
         return amostra
 
-    def concluir(self, amostra_id: uuid.UUID, agronomo_id: uuid.UUID) -> AmostraFoliar:
+    def concluir(self, amostra_id: uuid.UUID, usuario: Usuario) -> AmostraFoliar:
         """RF013 (parcial) — encerra o ciclo e torna o registro imutável (RN006).
 
         A geração do PDF do laudo fica para a Fase 2.
         """
-        amostra = self.obter(amostra_id, agronomo_id)
+        amostra = self.obter(amostra_id, usuario)
         if amostra.status == StatusAmostra.CONCLUIDA:
             raise AmostraImutavelError()
         if amostra.status != StatusAmostra.AGUARDANDO_REVISAO:
