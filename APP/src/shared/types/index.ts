@@ -94,10 +94,21 @@ export interface IndiceNutricional {
   classificacao: Classificacao | null
 }
 
+export interface InsumoSugerido {
+  insumo_id: string
+  nome_comercial: string
+  fabricante: string
+  concentracao_nutricional: Record<string, number>
+  match_score: string
+}
+
 export interface Recomendacao {
   texto_rascunho_ia: string | null
   texto_final_editado: string | null
   data_emissao: string | null
+  /** Motivo da indisponibilidade da redação automática (RF011 A1). */
+  falha_ia: string | null
+  insumos_sugeridos: InsumoSugerido[]
 }
 
 export interface AmostraResumo {

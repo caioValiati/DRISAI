@@ -14,12 +14,15 @@ import {
   Space,
   Spin,
   Statistic,
+  Progress,
   Table,
+  Tag,
   Typography,
 } from "antd";
 import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
+  FilePdfOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -51,6 +54,7 @@ export function ResultadosPage() {
   const { message } = App.useApp();
   const [texto, setTexto] = useState("");
   const [confirmandoConclusao, setConfirmandoConclusao] = useState(false);
+  const [baixando, setBaixando] = useState(false);
 
   const consulta = useQuery({
     queryKey: ["amostras", id],
@@ -59,9 +63,28 @@ export function ResultadosPage() {
   });
   const amostra = consulta.data;
 
+  // Enquanto o agrônomo não editar, o campo parte do rascunho gerado pela IA
+  // — que ele revisa e assume como seu antes de concluir (RN005)
   useEffect(() => {
-    setTexto(amostra?.recomendacao?.texto_final_editado ?? "");
-  }, [amostra?.recomendacao?.texto_final_editado]);
+    const recomendacao = amostra?.recomendacao;
+    setTexto(
+      recomendacao?.texto_final_editado ?? recomendacao?.texto_rascunho_ia ?? "",
+    );
+  }, [
+    amostra?.recomendacao?.texto_final_editado,
+    amostra?.recomendacao?.texto_rascunho_ia,
+  ]);
+
+  async function baixarLaudo() {
+    setBaixando(true);
+    try {
+      await amostrasApi.baixarLaudo(id!);
+    } catch (erro) {
+      message.error(mensagemDeErro(erro, "Não foi possível gerar o laudo."));
+    } finally {
+      setBaixando(false);
+    }
+  }
 
   const salvarRascunho = useMutation({
     mutationFn: () => amostrasApi.salvarRecomendacao(id!, texto),
@@ -117,6 +140,13 @@ export function ResultadosPage() {
   }
 
   const concluida = amostra.status === "CONCLUIDA";
+  const sugestoes = amostra.recomendacao?.insumos_sugeridos ?? [];
+  // Destaca, na composição do insumo, os nutrientes que ele veio corrigir
+  const nutrientesDeficientes = new Set(
+    amostra.indices
+      .filter((indice) => indice.classificacao === "DEFICIENTE")
+      .map((indice) => indice.elemento),
+  );
   const dadosRadar = amostra.indices.map((indice) => ({
     nutriente: indice.elemento,
     indice:
@@ -140,7 +170,16 @@ export function ResultadosPage() {
           </Typography.Title>
           <TagStatusAmostra status={amostra.status} />
         </Space>
-        {!concluida && (
+        {concluida ? (
+          <Button
+            type="primary"
+            icon={<FilePdfOutlined />}
+            loading={baixando}
+            onClick={baixarLaudo}
+          >
+            Baixar laudo em PDF
+          </Button>
+        ) : (
           <Space>
             <Button
               icon={<SaveOutlined />}
@@ -171,7 +210,16 @@ export function ResultadosPage() {
                   "DD/MM/YYYY HH:mm",
                 )
               : "—"
-          }. A geração do PDF do laudo será disponibilizada na Fase 2.`}
+          }. O laudo pode ser reemitido a qualquer momento com o mesmo conteúdo.`}
+        />
+      )}
+
+      {!concluida && amostra.recomendacao?.falha_ia && (
+        <Alert
+          type="warning"
+          showIcon
+          title="IA indisponível"
+          description={`${amostra.recomendacao.falha_ia} Os índices DRIS e os insumos sugeridos foram calculados normalmente — escreva a recomendação manualmente.`}
         />
       )}
 
@@ -274,17 +322,84 @@ export function ResultadosPage() {
         </Col>
       </Row>
 
+      {sugestoes.length > 0 && (
+        <Card
+          title="Insumos sugeridos"
+          extra={
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Ranqueados pela aderência entre a composição do produto e as
+              carências diagnosticadas, dentro do catálogo autorizado.
+            </Typography.Text>
+          }
+        >
+          <Row gutter={[12, 12]}>
+            {sugestoes.map((sugestao) => (
+              <Col xs={24} sm={12} lg={8} key={sugestao.insumo_id}>
+                <Card size="small" style={{ height: "100%" }}>
+                  <Space
+                    orientation="vertical"
+                    size={6}
+                    style={{ display: "flex" }}
+                  >
+                    <Space
+                      style={{
+                        justifyContent: "space-between",
+                        display: "flex",
+                        width: "100%",
+                      }}
+                    >
+                      <Typography.Text strong>
+                        {sugestao.nome_comercial}
+                      </Typography.Text>
+                      <Tag color="green">
+                        {Number(sugestao.match_score).toFixed(0)}%
+                      </Tag>
+                    </Space>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {sugestao.fabricante}
+                    </Typography.Text>
+                    <Progress
+                      percent={Number(sugestao.match_score)}
+                      showInfo={false}
+                      strokeColor="#2e7d32"
+                      size="small"
+                    />
+                    <div>
+                      {Object.entries(sugestao.concentracao_nutricional).map(
+                        ([nutriente, valor]) => (
+                          <Tag
+                            key={nutriente}
+                            color={
+                              nutrientesDeficientes.has(nutriente)
+                                ? "green"
+                                : undefined
+                            }
+                          >
+                            {nutriente} {valor}%
+                          </Tag>
+                        ),
+                      )}
+                    </div>
+                  </Space>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Card>
+      )}
+
       <Card
         title="Recomendação técnica"
         extra={
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            O rascunho automático por IA será incorporado na Fase 2 — escreva a
-            recomendação com base nos índices acima.
+            {amostra.recomendacao?.texto_rascunho_ia
+              ? "Rascunho gerado por IA — revise, edite e assuma o texto antes de concluir."
+              : "Escreva a recomendação com base nos índices e nos insumos acima."}
           </Typography.Text>
         }
       >
         <Input.TextArea
-          rows={8}
+          rows={10}
           value={texto}
           disabled={concluida}
           onChange={(evento) => setTexto(evento.target.value)}

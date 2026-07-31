@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
 from app.api.v1.schemas.amostras import (
     AmostraDetalheResponse,
@@ -11,6 +11,7 @@ from app.api.v1.schemas.amostras import (
     AtualizarRecomendacaoRequest,
 )
 from app.application.services.amostra_service import AmostraService
+from app.application.services.laudo_service import LaudoService
 from app.core.deps import CurrentUser, DbSession
 
 router = APIRouter(prefix="/amostras", tags=["Amostras Foliares"])
@@ -69,3 +70,14 @@ def atualizar_recomendacao(
 def concluir_amostra(amostra_id: uuid.UUID, db: DbSession, usuario: CurrentUser):
     amostra = AmostraService(db).concluir(amostra_id, usuario)
     return _preencher_contexto(AmostraDetalheResponse.model_validate(amostra), amostra)
+
+
+@router.get("/{amostra_id}/laudo.pdf", response_class=Response)
+def emitir_laudo(amostra_id: uuid.UUID, db: DbSession, usuario: CurrentUser):
+    """RF013 — laudo técnico da amostra concluída, pronto para entrega."""
+    pdf, nome_arquivo = LaudoService(db).emitir_pdf(amostra_id, usuario)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nome_arquivo}"'},
+    )

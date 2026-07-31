@@ -20,4 +20,18 @@ export const amostrasApi = {
       .data,
   concluir: async (id: string) =>
     (await api.post<AmostraDetalhe>(`/amostras/${id}/concluir`)).data,
+
+  /** RF013 — baixa o laudo da amostra concluída. */
+  baixarLaudo: async (id: string) => {
+    const resposta = await api.get(`/amostras/${id}/laudo.pdf`, { responseType: 'blob' })
+    const nome =
+      /filename="(.+)"/.exec(resposta.headers['content-disposition'] ?? '')?.[1] ??
+      `laudo-${id}.pdf`
+    const url = URL.createObjectURL(resposta.data as Blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = nome
+    link.click()
+    URL.revokeObjectURL(url)
+  },
 }
