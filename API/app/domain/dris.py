@@ -12,6 +12,18 @@ from dataclasses import dataclass
 
 from app.domain.enums import ClassificacaoNutriente
 
+# Piso do limiar de classificação, em unidades de índice.
+#
+# As normas publicadas trazem média e desvio-padrão arredondados em duas casas
+# decimais, o que injeta um ruído residual nos índices: alimentando o motor com
+# uma amostra idêntica às médias da norma de soja R2 (HOOGERHEIDE, 2005), os
+# índices ficam entre -0,23 e +0,29 e o IBN em 0,97. Sem um piso, o critério
+# auto-normalizado (IBN/n) desceria a ~0,09 nesse caso e classificaria esse
+# ruído como deficiência. O piso é folgado o suficiente (cerca de sete vezes o
+# maior desvio observado) para absorver o arredondamento sem mascarar
+# desequilíbrios de interesse agronômico.
+LIMITE_MINIMO = 2.0
+
 
 @dataclass(frozen=True)
 class ResultadoDris:
@@ -77,7 +89,11 @@ def calcular_dris(
             indices[nutriente] = round(soma / n_relacoes, 2)
 
     ibn = round(sum(abs(i) for i in indices.values()), 2)
-    limite = limite_equilibrio if limite_equilibrio is not None else ibn / len(indices)
+    limite = (
+        limite_equilibrio
+        if limite_equilibrio is not None
+        else max(ibn / len(indices), LIMITE_MINIMO)
+    )
 
     classificacoes = {}
     for nutriente, indice in indices.items():

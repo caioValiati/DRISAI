@@ -3,7 +3,8 @@
 import pytest
 
 from app.domain.dris import _funcao_relacao, calcular_dris
-from app.domain.enums import ClassificacaoNutriente
+from app.domain.enums import NUTRIENTES, ClassificacaoNutriente
+from app.scripts.seed import NORMA_SOJA, TEORES_REFERENCIA_SOJA
 
 # Norma sintética com três nutrientes para validação manual dos cálculos
 NORMA = {
@@ -70,3 +71,58 @@ def test_teor_invalido_levanta_erro():
 def test_norma_incompativel_levanta_erro():
     with pytest.raises(ValueError):
         calcular_dris({"Ca": 1.0, "Mg": 1.0}, NORMA)
+
+
+# --------------------------------------------------------------------------
+# Validação contra a norma real do projeto: soja em R2, sul do Maranhão
+# (HOOGERHEIDE, 2005, Figura 1) — 55 relações duais entre os 11 nutrientes.
+# --------------------------------------------------------------------------
+
+
+def test_norma_real_cobre_todos_os_pares_de_nutrientes():
+    from itertools import combinations
+
+    pares_norma = {frozenset(rel.split("/")) for rel in NORMA_SOJA}
+    pares_possiveis = {frozenset(p) for p in combinations(NUTRIENTES, 2)}
+    assert pares_norma == pares_possiveis
+    assert len(NORMA_SOJA) == 55  # nenhuma dupla repetida em orientação invertida
+
+
+def test_amostra_igual_a_media_da_norma_fica_equilibrada():
+    """Teores idênticos às médias da população de referência devem gerar
+    índices próximos de zero — o desvio residual vem apenas do arredondamento
+    dos valores publicados."""
+    resultado = calcular_dris(TEORES_REFERENCIA_SOJA, NORMA_SOJA)
+
+    assert all(abs(indice) < 1 for indice in resultado.indices.values()), resultado.indices
+    assert resultado.ibn < 2
+    # Nenhum nutriente pode ser apontado como deficiente/excessivo: o resíduo é
+    # ruído do arredondamento da norma, não desequilíbrio nutricional
+    assert all(
+        c == ClassificacaoNutriente.EQUILIBRIO for c in resultado.classificacoes.values()
+    ), resultado.classificacoes
+
+
+def test_soma_dos_indices_dris_e_proxima_de_zero():
+    """Propriedade estrutural do método: cada f(A/B) entra positiva no índice de
+    A e negativa no de B, então o somatório dos índices se anula."""
+    teores = dict(TEORES_REFERENCIA_SOJA, Zn=20.0, Mn=15.0)
+    resultado = calcular_dris(teores, NORMA_SOJA)
+
+    assert sum(resultado.indices.values()) == pytest.approx(0.0, abs=0.5)
+
+
+def test_deficiencia_severa_e_apontada_com_a_norma_real():
+    # Zn a menos da metade da média da norma (43,04 -> 18) deve ser o mais limitante
+    teores = dict(TEORES_REFERENCIA_SOJA, Zn=18.0)
+    resultado = calcular_dris(teores, NORMA_SOJA)
+
+    assert resultado.classificacoes["Zn"] == ClassificacaoNutriente.DEFICIENTE
+    assert resultado.indices["Zn"] == min(resultado.indices.values())
+
+
+def test_ibn_cresce_com_o_grau_de_desequilibrio():
+    equilibrada = calcular_dris(TEORES_REFERENCIA_SOJA, NORMA_SOJA)
+    desequilibrada = calcular_dris(dict(TEORES_REFERENCIA_SOJA, Zn=18.0, P=1.5), NORMA_SOJA)
+
+    assert desequilibrada.ibn > equilibrada.ibn
