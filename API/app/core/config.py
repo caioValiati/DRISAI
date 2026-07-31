@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     cors_origins: list[str] = ["http://localhost:5173"]
     cookie_secure: bool = False
+    # RF011 — redação automática do laudo. Sem chave configurada o sistema segue
+    # operando pelo fluxo alternativo A1, apenas sem o rascunho textual.
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
 
 
 @lru_cache

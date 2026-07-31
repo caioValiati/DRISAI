@@ -20,6 +20,7 @@ from app.domain.exceptions import (
     RecursoNaoEncontradoError,
 )
 from app.application.escopo import escopo_de
+from app.application.services.analise_ia_service import AnaliseIaService
 from app.infrastructure.db.models import (
     AmostraFoliar,
     IndiceNutricional,
@@ -78,6 +79,9 @@ class AmostraService:
             )
         amostra.valor_ibn = Decimal(str(resultado.ibn))
         amostra.status = StatusAmostra.AGUARDANDO_REVISAO
+        # Congela a matriz usada: se a norma for editada depois, os índices deste
+        # laudo continuam reproduzíveis a partir do próprio registro (RN006)
+        amostra.norma_snapshot = dict(norma.matriz_relacoes_duais)
 
     def criar_e_processar(self, usuario: Usuario, dados: AmostraRequest) -> AmostraFoliar:
         norma = self._validar_vinculos(dados, usuario)
@@ -87,8 +91,10 @@ class AmostraService:
             data_coleta=dados.data_coleta,
         )
         self._processar_indices(amostra, dados, norma)
-        amostra.recomendacao = Recomendacao()  # rascunho de IA entra na Fase 2
+        amostra.recomendacao = Recomendacao()
         self.repo.adicionar(amostra)
+        # RF011 — o matching e a redação rodam logo após o cálculo (RF010)
+        AnaliseIaService(self.db).analisar(amostra)
         return self.obter(amostra.id, usuario)
 
     def atualizar_e_reprocessar(
@@ -102,6 +108,7 @@ class AmostraService:
         amostra.norma_dris_id = dados.norma_dris_id
         amostra.data_coleta = dados.data_coleta
         self._processar_indices(amostra, dados, norma)
+        AnaliseIaService(self.db).analisar(amostra)
         return self.obter(amostra_id, usuario)
 
     def atualizar_recomendacao(

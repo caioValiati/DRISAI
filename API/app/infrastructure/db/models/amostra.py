@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import Date, Enum, ForeignKey, Numeric, String, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.enums import ClassificacaoNutriente, StatusAmostra
@@ -26,6 +26,10 @@ class AmostraFoliar(Base, BaseModelMixin):
         default=StatusAmostra.RASCUNHO,
     )
     valor_ibn: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    # Cópia da matriz de relações duais vigente no momento do cálculo. Sem ela,
+    # editar uma norma tornaria os índices de laudos antigos irreproduzíveis,
+    # quebrando a rastreabilidade exigida pela RN006.
+    norma_snapshot: Mapped[dict | None] = mapped_column(JSONB)
 
     talhao: Mapped["Talhao"] = relationship()  # noqa: F821
     norma: Mapped["NormaDris"] = relationship()  # noqa: F821

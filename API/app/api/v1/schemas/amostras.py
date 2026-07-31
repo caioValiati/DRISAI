@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasPath, BaseModel, ConfigDict, Field, field_validator
 
 from app.domain.enums import NUTRIENTES, ClassificacaoNutriente, StatusAmostra
 
@@ -54,12 +54,35 @@ class AmostraResumoResponse(BaseModel):
     cultura_norma: str | None = None
 
 
+class InsumoSugeridoResponse(BaseModel):
+    """Insumo ranqueado pelo motor de matching (RF011).
+
+    Achata a associativa `recomendacao_insumo` com os dados do próprio insumo,
+    poupando o cliente de uma segunda consulta ao catálogo.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    # Lido do próprio insumo: a chave estrangeira da associativa só é populada
+    # no flush, e a resposta é montada antes disso no fluxo de processamento
+    insumo_id: uuid.UUID = Field(validation_alias=AliasPath("insumo", "id"))
+    nome_comercial: str = Field(validation_alias=AliasPath("insumo", "nome_comercial"))
+    fabricante: str = Field(validation_alias=AliasPath("insumo", "fabricante"))
+    concentracao_nutricional: dict[str, float] = Field(
+        validation_alias=AliasPath("insumo", "concentracao_nutricional")
+    )
+    match_score: Decimal
+
+
 class RecomendacaoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     texto_rascunho_ia: str | None
     texto_final_editado: str | None
     data_emissao: datetime | None
+    # Preenchido quando a redação automática falha (RF011 A1)
+    falha_ia: str | None = None
+    insumos_sugeridos: list[InsumoSugeridoResponse] = []
 
 
 class AmostraDetalheResponse(AmostraResumoResponse):

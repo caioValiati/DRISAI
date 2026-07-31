@@ -3,7 +3,14 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.infrastructure.db.models import AmostraFoliar, Produtor, Propriedade, Talhao
+from app.infrastructure.db.models import (
+    AmostraFoliar,
+    Produtor,
+    Propriedade,
+    Recomendacao,
+    RecomendacaoInsumo,
+    Talhao,
+)
 
 
 class AmostraRepository:
@@ -34,7 +41,9 @@ class AmostraRepository:
             .where(AmostraFoliar.id == amostra_id)
             .options(
                 selectinload(AmostraFoliar.indices),
-                selectinload(AmostraFoliar.recomendacao),
+                selectinload(AmostraFoliar.recomendacao)
+                .selectinload(Recomendacao.insumos_sugeridos)
+                .selectinload(RecomendacaoInsumo.insumo),
             )
         )
 
