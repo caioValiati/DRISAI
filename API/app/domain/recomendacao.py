@@ -28,7 +28,7 @@ class InsumoCandidato:
 @dataclass(frozen=True)
 class InsumoRanqueado:
     insumo: InsumoCandidato
-    score: float  # 0 a 100
+    score: float
     nutrientes_atendidos: list[str]
 
 
@@ -93,7 +93,7 @@ def ranquear_insumos(
     """
     necessidade = montar_vetor_necessidade(indices, classificacoes)
     if not necessidade:
-        return []  # amostra equilibrada: nada a recomendar
+        return []
 
     ranqueados: list[InsumoRanqueado] = []
     for insumo in catalogo:

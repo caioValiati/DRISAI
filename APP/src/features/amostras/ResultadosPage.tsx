@@ -68,7 +68,9 @@ export function ResultadosPage() {
   useEffect(() => {
     const recomendacao = amostra?.recomendacao;
     setTexto(
-      recomendacao?.texto_final_editado ?? recomendacao?.texto_rascunho_ia ?? "",
+      recomendacao?.texto_final_editado ??
+        recomendacao?.texto_rascunho_ia ??
+        "",
     );
   }, [
     amostra?.recomendacao?.texto_final_editado,
@@ -103,6 +105,33 @@ export function ResultadosPage() {
       // RN005 — o texto revisado é salvo antes do fechamento
       await amostrasApi.salvarRecomendacao(id!, texto);
       return amostrasApi.concluir(id!);
+    },
+    onSuccess: () => {
+      message.success("Diagnóstico concluído. O registro agora é imutável.");
+      queryClient.invalidateQueries({ queryKey: ["amostras"] });
+      setConfirmandoConclusao(false);
+    },
+    onError: (erro) => {
+      message.error(
+        mensagemDeErro(erro, "Não foi possível concluir o diagnóstico."),
+      );
+      setConfirmandoConclusao(false);
+    },
+  });
+
+  const atualizar = useMutation({
+    mutationFn: async () => {
+      await amostrasApi.atualizar(id!, {
+        talhao_id: amostra!.talhao_id,
+        norma_dris_id: amostra!.norma_dris_id,
+        data_coleta: amostra!.data_coleta,
+        teores: Object.fromEntries(
+          amostra!.indices.map((i) => [
+            i.elemento,
+            Number(i.valor_laboratorio),
+          ]),
+        ),
+      });
     },
     onSuccess: () => {
       message.success("Diagnóstico concluído. O registro agora é imutável.");
@@ -157,9 +186,17 @@ export function ResultadosPage() {
 
   return (
     <Space orientation="vertical" size={16} style={{ display: "flex" }}>
-      <Space wrap style={{ justifyContent: "space-between", display: "flex" }}>
+      <Space
+        wrap
+        style={{
+          justifyContent: "space-between",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
         <Space>
           <Button
+            type="text"
             icon={<ArrowLeftOutlined />}
             onClick={() => navigate("/amostras")}
           >
@@ -181,6 +218,13 @@ export function ResultadosPage() {
           </Button>
         ) : (
           <Space>
+            <Button
+              icon={<SaveOutlined />}
+              loading={salvarRascunho.isPending}
+              onClick={() => atualizar.mutate()}
+            >
+              Atualizar rascunho
+            </Button>
             <Button
               icon={<SaveOutlined />}
               loading={salvarRascunho.isPending}
@@ -258,13 +302,14 @@ export function ResultadosPage() {
             extra={
               <Statistic
                 title="IBN"
+                decimalSeparator=","
                 value={amostra.valor_ibn ? Number(amostra.valor_ibn) : 0}
                 precision={2}
                 styles={{ content: { fontSize: 20, color: "#2e7d32" } }}
               />
             }
           >
-            <ResponsiveContainer width="100%" height={340}>
+            <ResponsiveContainer width="100%" height={445}>
               <RadarChart data={dadosRadar}>
                 <PolarGrid />
                 <PolarAngleAxis dataKey="nutriente" />

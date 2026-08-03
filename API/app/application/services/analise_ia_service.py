@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 def redator_padrao() -> RedatorDeLaudo:
     settings = get_settings()
+    print("KEY: " + settings.groq_api_key)
     return GroqRedator(api_key=settings.groq_api_key, modelo=settings.groq_model)
 
 
