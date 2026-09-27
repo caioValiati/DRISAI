@@ -1,9 +1,10 @@
 import uuid
 
+import jwt
 from sqlalchemy.orm import Session
 
 from app.api.v1.schemas.auth import AtualizarPerfilRequest, LoginRequest, RegistroRequest
-from app.core.security import hash_senha, verificar_senha
+from app.core.security import criar_password_reset_token, decodificar_token, hash_senha, verificar_senha
 from app.domain.enums import PerfilUsuario
 from app.domain.exceptions import AcessoNegadoError, ConflitoError, RecursoNaoEncontradoError
 from app.infrastructure.db.models import Usuario
@@ -51,3 +52,34 @@ class AuthService:
         if not usuario:
             raise RecursoNaoEncontradoError("Usuário não encontrado.")
         usuario.ativo = False
+
+    def solicitar_recuperacao_senha(self, email: str) -> tuple[Usuario, str]:
+        """Busca o usuário e gera o token de recuperação."""
+        usuario = self.repo.obter_por_email(email)
+
+        if not usuario:
+            raise RecursoNaoEncontradoError("Usuário não encontrado.")
+
+        token = criar_password_reset_token(
+            usuario_id=str(usuario.id), perfil=usuario.perfil.value
+        )
+        return usuario, token
+
+
+    def redefinir_senha(self, token: str, nova_senha: str) -> None:
+        """Valida o token e atualiza a senha do usuário."""
+        try:
+            payload = decodificar_token(token, tipo_esperado="password_reset")
+            usuario_id_str = payload.get("sub")
+            usuario_id = uuid.UUID(usuario_id_str)
+
+        except jwt.ExpiredSignatureError:
+            raise AcessoNegadoError("O link de redefinição de senha expirou.")
+        except (jwt.InvalidTokenError, jwt.PyJWTError):
+            raise AcessoNegadoError("Token de redefinição inválido.")
+
+        usuario = self.repo.obter_por_id(usuario_id)
+        if not usuario:
+            raise RecursoNaoEncontradoError("Usuário não encontrado.")
+
+        usuario.senha_hash = hash_senha(nova_senha)

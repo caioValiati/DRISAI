@@ -37,3 +37,11 @@ class TokenResponse(BaseModel):
 class AtualizarPerfilRequest(BaseModel):
     nome: str = Field(min_length=3, max_length=255)
     email: EmailStr
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str

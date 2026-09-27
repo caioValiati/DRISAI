@@ -56,7 +56,11 @@ export function LoginPage() {
               autoComplete="current-password"
             />
           </Form.Item>
-
+          <div style={{ textAlign: 'right', marginBottom: 16 }}>
+            <Link to="/esqueci_senha" style={{ fontSize: 13 }}>
+              Esqueceu a senha?
+            </Link>
+          </div>
           <Button type="primary" htmlType="submit" block loading={enviando}>
             Entrar
           </Button>

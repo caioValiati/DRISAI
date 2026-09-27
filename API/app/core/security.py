@@ -52,3 +52,12 @@ def decodificar_token(token: str, tipo_esperado: str) -> dict:
     if payload.get("tipo") != tipo_esperado:
         raise jwt.InvalidTokenError("Tipo de token inesperado")
     return payload
+
+def criar_password_reset_token(usuario_id: str, perfil: str = "user") -> str:
+    """Gera um token JWT com validade curta (15 minutos) específico para redefinição de senha."""
+    return _criar_token(
+        usuario_id=usuario_id,
+        perfil=perfil,
+        tipo="password_reset",
+        expira_em=timedelta(minutes=15),
+    )

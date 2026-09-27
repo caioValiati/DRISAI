@@ -1,0 +1,7 @@
+.linha-par {
+  background-color: #ffffff;
+}
+
+.linha-impar {
+  background-color: #fafafa; /* Cor de fundo alternada */
+}

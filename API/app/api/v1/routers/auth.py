@@ -1,22 +1,27 @@
 import uuid
 
 import jwt
-from fastapi import APIRouter, Cookie, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Cookie, HTTPException, Response, status
 
+from app.domain.exceptions import RecursoNaoEncontradoError
+from app.infrastructure.email.email_service import EmailService
 from app.api.v1.schemas.auth import (
     AtualizarPerfilRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     RegistroRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UsuarioResponse,
 )
 from app.application.services.auth_service import AuthService
 from app.core.config import get_settings
 from app.core.deps import CurrentUser, DbSession
-from app.core.security import criar_access_token, criar_refresh_token, decodificar_token
+from app.core.security import criar_access_token, criar_refresh_token, decodificar_token, criar_password_reset_token, hash_senha
 from app.infrastructure.repositories.usuario_repository import UsuarioRepository
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
+email_service = EmailService()
 
 _REFRESH_COOKIE = "drisai_refresh"
 
@@ -33,6 +38,37 @@ def _definir_cookie_refresh(response: Response, token: str) -> None:
         path="/api/v1/auth",
     )
 
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+def forgot_password(
+    data: ForgotPasswordRequest,
+    db: DbSession,
+    background_tasks: BackgroundTasks,
+):
+    auth_service = AuthService(db)
+
+    try:
+        token = auth_service.solicitar_recuperacao_senha(data.email)
+
+        background_tasks.add_task(
+            email_service.send_reset_password_email, data.email, token
+        )
+    except RecursoNaoEncontradoError:
+        pass
+
+    return {
+        "message": "Se o e-mail estiver cadastrado, as instruções foram enviadas."
+    }
+
+
+@router.post("/redefinir_senha", status_code=status.HTTP_200_OK)
+def reset_password(data: ResetPasswordRequest, db: DbSession):
+    auth_service = AuthService(db)
+
+    auth_service.redefinir_senha(
+        token=data.token, nova_senha=data.new_password
+    )
+
+    return {"message": "Senha redefinida com sucesso!"}
 
 @router.post("/registrar", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
 def registrar(dados: RegistroRequest, db: DbSession):

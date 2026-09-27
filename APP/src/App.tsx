@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/app/providers/AuthContext";
 import { AppLayout } from "@/app/layout/AppLayout";
 import { RoleGuard } from "@/app/routes/RoleGuard";
-import { LoginPage } from "@/features/auth/LoginPage";
+import { LoginPage } from "@/features/auth/login/LoginPage";
 import { CadastroPage } from "@/features/auth/CadastroPage";
 import { PerfilPage } from "@/features/perfil/PerfilPage";
 import { NormasPage } from "@/features/normas/NormasPage";
@@ -12,6 +12,8 @@ import { PropriedadesPage } from "@/features/propriedades/PropriedadesPage";
 import { TalhoesPage } from "@/features/talhoes/TalhoesPage";
 import { AmostrasPage } from "@/features/amostras/AmostrasPage";
 import { ResultadosPage } from "@/features/amostras/ResultadosPage";
+import { RedefinirSenhaPage } from "./features/auth/RedefinirSenhaPage";
+import { RecuperacaoSenhaPage } from "./features/auth/RecuperacaoSenhaPage";
 
 /** Página inicial de cada perfil (RF003). */
 function RotaInicial() {
@@ -29,6 +31,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/cadastro" element={<CadastroPage />} />
+      <Route path="/esqueci_senha" element={<RecuperacaoSenhaPage />} />
+      <Route path="/redefinir_senha" element={<RedefinirSenhaPage />} />
 
       <Route element={<RoleGuard />}>
         <Route element={<AppLayout />}>

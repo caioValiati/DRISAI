@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registrarHandlerDeSessaoExpirada(limparSessao)
     api
       .post<LoginResponse>('/auth/refresh')
-      .then(({ data }) => {
+      ?.then(({ data }) => {
         definirAccessToken(data.access_token)
         setUsuario(data.usuario)
       })

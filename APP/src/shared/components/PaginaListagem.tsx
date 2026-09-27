@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Button, Card, Space, Table, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
+import './table.css'
 
 interface PaginaListagemProps<T> extends Pick<TableProps<T>, 'columns' | 'dataSource' | 'loading'> {
   titulo: string
@@ -11,10 +12,6 @@ interface PaginaListagemProps<T> extends Pick<TableProps<T>, 'columns' | 'dataSo
   acoesExtras?: ReactNode
 }
 
-/**
- * Estrutura comum a todas as telas de listagem do DERS: cabeçalho, botão de
- * novo registro e tabela paginada.
- */
 export function PaginaListagem<T extends { id: string }>({
   titulo,
   descricao,
@@ -53,8 +50,10 @@ export function PaginaListagem<T extends { id: string }>({
 
       <Table<T>
         rowKey="id"
-        scroll={{ x: 'max-content' }}
+        size='small'
+        scroll={{ x: 'max-content', y: '50vh' }} 
         pagination={{ pageSize: 10, showSizeChanger: false }}
+        rowClassName={(_, index) => (index % 2 === 0 ? 'linha-par' : 'linha-impar')}
         {...tabela}
       />
     </Card>

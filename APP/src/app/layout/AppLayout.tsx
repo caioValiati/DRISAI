@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Avatar, Dropdown, Layout, Menu, Typography } from "antd";
+import { Avatar, Dropdown, Flex, Layout, Menu, Typography } from "antd";
 import {
   ExperimentOutlined,
   GoldOutlined,
@@ -20,7 +20,6 @@ export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // RF003 — o menu reflete o perfil: Admin cuida da curadoria; Agrônomo, da consultoria
   const itens = useMemo(() => {
     if (usuario?.perfil === "ADMIN") {
       return [
@@ -85,30 +84,84 @@ export function AppLayout() {
   )?.key;
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout style={{ height: "100vh", overflow: "hidden" }}>
       <Sider
         breakpoint="lg"
         collapsedWidth="0"
-        theme="light"
+        theme="dark"
         width={230}
-        style={{ borderRight: "1px solid #f0f0f0" }}
+        style={{
+          height: "100vh",
+          overflow: "auto",
+          borderRight: "1px solid #f0f0f0",
+        }}
       >
-        <div style={{ padding: "20px 16px" }}>
-          <Typography.Title level={4} style={{ margin: 0, color: "#2e7d32" }}>
-            DRISAI
-          </Typography.Title>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Gestão nutricional agrícola
-          </Typography.Text>
+        <div style={{ padding: "16px", borderRadius: "8px", maxWidth: "300px" }}>
+          <Flex gap={12} align="center">
+            <Avatar
+              shape="square"
+              size={40}
+              style={{
+                backgroundColor: "#10b981",
+                borderRadius: "10px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                fontSize: "20px",
+              }}
+            >
+              🧠
+            </Avatar>
+
+            <Flex vertical gap={2}>
+              <Typography.Title
+                level={4}
+                style={{
+                  color: "#ffffff",
+                  margin: 0,
+                  fontWeight: "bold",
+                  fontSize: "18px",
+                  lineHeight: "1.2",
+                }}
+              >
+                DRIS.AI
+              </Typography.Title>
+
+              <Typography.Text
+                style={{
+                  color: "#71717a",
+                  fontSize: "10px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                DIAGNOSE FOLIAR
+              </Typography.Text>
+            </Flex>
+          </Flex>
         </div>
+
+        <Typography.Text
+          style={{
+            color: "#71717a",
+            fontSize: "10px",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            marginLeft: 16,
+          }}
+        >
+          Navegação
+        </Typography.Text>
         <Menu
+          title="Navegação"
+          theme="dark"
           mode="inline"
           selectedKeys={selecionado ? [selecionado] : []}
           items={itens}
         />
       </Sider>
 
-      <Layout>
+      <Layout style={{ height: "100vh" }}>
         <Header
           style={{
             background: "#fff",
@@ -162,7 +215,7 @@ export function AppLayout() {
           </Dropdown>
         </Header>
 
-        <Content style={{ padding: 24 }}>
+        <Content style={{ padding: 24, overflowY: "auto" }}>
           <Outlet />
         </Content>
       </Layout>
